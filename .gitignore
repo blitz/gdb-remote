@@ -1,0 +1,9 @@
+\#*
+.\#*
+*.swp
+*~
+*.fas
+*.fasb
+*.fasl
+*.lx32fsl
+*.wx32fsl
