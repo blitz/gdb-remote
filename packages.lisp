@@ -8,6 +8,7 @@
 ;;;  |___|jgs it's worth it, you may buy the author a coffee in return.
 
 (defpackage :blitz.debug.gdb-remote
+  (:nicknames :gdbremote)
   (:use :common-lisp :defclass-star :usocket
         :binary-types)
   (:import-from "CL-UTILITIES" "WITH-UNIQUE-NAMES")
