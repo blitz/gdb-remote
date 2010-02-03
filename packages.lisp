@@ -21,6 +21,8 @@
            ;; Targets
            "TARGET-X86"
            "MAKE-X86-REGISTER-SET"
+           "REGISTER-SET-TO-VECTOR"
+           "REGISTER-SET-FROM-VECTOR"
            ;; Server methods
            "RUNNING?"
            "CHECK-INTERRUPT"
