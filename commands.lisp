@@ -26,6 +26,11 @@
 killing."
   (throw 'gdb-detach 'gdb-detach))
 
+(define-gdb-command gdb-extended-mode ()
+    "Enable extended mode."
+    (#\!)
+  (extended-mode-reaction server))
+
 (define-gdb-command gdb-read-registers ()
     "Read registers"
     (#\g)

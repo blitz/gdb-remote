@@ -13,6 +13,13 @@
   (stream
    (no-ack-mode :initform nil)))
 
+(defclass* gdb-extended-server (gdb-server)
+  ())
+
+(defgeneric extended-mode-reaction (server)
+  (:method ((o gdb-server)) "")
+  (:method ((o gdb-extended-server)) "OK"))
+
 (defgeneric accept-gdb-connection (server port)
   (:documentation "Wait for a single connection to `server' on `port'")
   (:method ((server gdb-server) port)

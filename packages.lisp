@@ -16,6 +16,7 @@
   (:export "GDB-PROTOCOL-ERROR"
            ;; GDB Server
            "GDB-SERVER"
+           "GDB-EXTENDED-SERVER"
            "STREAM-OF"
            "ACCEPT-GDB-CONNECTION"
            ;; Targets
