@@ -24,9 +24,9 @@
     "We received an extended query packet."
     (#\q "(.*)" (query-string) :default-method-p nil))
 
-(defgeneric gdb-monitor (server monitor-command)
+(defgeneric gdb-monitor (server monitor-command rest-arg)
   (:documentation "Handle a monitor command from GDB.")
-  (:method ((server gdb-server) monitor-command)
+  (:method ((server gdb-server) monitor-command rest-arg)
     ""))
 
 (defgeneric gdb-describe-target (target))
@@ -60,16 +60,24 @@
   (defmethod gdb-query ((server gdb-server) query-string)
     (regex-case query-string
       (("Rcmd,(.*)" monitor-hex-command)
-       (let* ((string (handler-case
-                          (octets-to-string (from-hex-string monitor-hex-command))
-                        (t ()
-                          (return-from gdb-query
-                            (format nil "EDecodingError: Try ASCII")))))
-              (response (gdb-monitor server string)))
-         (to-hex-string (string-to-octets 
-                         (if (stringp response)
-                             response
-                             (format nil "Internal error.~%"))))))
+       (let* ((command (handler-case
+                           ;; Interpret only the first piece -- pass the rest to the handler as-is
+                           (let ((decoded-string (octets-to-string (from-hex-string monitor-hex-command))))
+                             (multiple-value-bind (cmd rest)
+                                 (split-sequence:split-sequence #\Space
+                                                                decoded-string
+                                                                :count 1
+                                                                :remove-empty-subseqs t)
+                               (cons (make-keyword (string-upcase (first cmd)))
+                                     (subseq decoded-string rest))))
+                         (t (c)
+                           (return-from gdb-query
+                             (format nil "EDecodingError: Try ASCII")))))
+              (response (gdb-monitor server (car command) (cdr command))))
+         (typecase response
+           (string (to-hex-string (string-to-octets (concatenate 'string response #(#\Newline)))))
+           (null (to-hex-string (string-to-octets (format nil "Internal error.~%"))))
+           (t "OK"))))
       (("Supported.*")            ; XXX we ignore GDB features
        ;; XXX Use an extra method for this.
        "QStartNoAckMode+;PacketSize=4000;qXfer:features:read+;qXfer:memory-map:read+;qXfer:spu:read+"
