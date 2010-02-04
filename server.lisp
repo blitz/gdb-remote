@@ -20,10 +20,10 @@
   (:method ((o gdb-server)) "")
   (:method ((o gdb-extended-server)) "OK"))
 
-(defgeneric accept-gdb-connection (server port)
+(defgeneric accept-gdb-connection (server port &optional listen-address)
   (:documentation "Wait for a single connection to `server' on `port'")
-  (:method ((server gdb-server) port)
-    (let ((server-socket (socket-listen "127.0.0.1" port :reuse-address t
+  (:method ((server gdb-server) port &optional (listen-address "127.0.0.1"))
+    (let ((server-socket (socket-listen listen-address port :reuse-address t
                                       :backlog 1)))
     (unwind-protect
          (let* ((client (socket-accept server-socket))
@@ -31,7 +31,7 @@
            (unwind-protect 
                 (progn
                   (setf (stream-of server) stream)
-                  (format *trace-output* "Connection established.~%")
+                  (format *trace-output* "Connection with ~A established.~%" (get-peer-address client))
                   (handle-protocol server))
              (close stream)))
          (socket-close server-socket)))))
@@ -144,7 +144,7 @@ for a given character)."
        while char
        ;; If we receive a character while we are running, interrupt
        when (running? server)
-        do (gdb-interrupt server)
+       do (gdb-interrupt server)
        do (multiple-value-setq (state our-checksum their-checksum command) 
             (protocol-state-update stream char state our-checksum their-checksum
                                    command
