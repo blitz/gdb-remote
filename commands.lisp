@@ -42,6 +42,17 @@ killing."
   (gdb-set-target-registers-from-vector server (from-hex-string register-set))
   "OK")
 
+(define-gdb-command gdb-read-register (nr)
+    "Read registers"
+    (#\p "(.*)")
+  (to-hex-string (write-to-string (gdb-read-target-register server nr))))
+
+(define-gdb-command gdb-write-register (nr value)
+    "Write registers. Return value is ignored."
+    (#\P "(.*)=(.*)")
+  (gdb-write-target-register server (parse-integer nr :radix #x10) (parse-integer value :radix #x10))
+  "OK")
+
 (define-gdb-command gdb-set-thread (domain thread)
     "Set thread for specific operations"
     (#\H "(.)([+-]?[0-9]+)")

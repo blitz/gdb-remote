@@ -19,6 +19,9 @@
 (defgeneric register-set-to-vector (target register-set)
   (:documentation "Transform a register-set into a byte vector."))
 
+(defgeneric gdb-read-target-register (target register-nr))
+(defgeneric gdb-write-target-register (target register-nr value))
+
 (defgeneric gdb-target-registers-as-vector (target)
   (:documentation "Return values of TARGET's registers as byte vector,
 in format and order expected by GDB.")
