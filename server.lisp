@@ -21,11 +21,12 @@
   (:method ((o gdb-server)) "")
   (:method ((o gdb-extended-server)) "OK"))
 
-(defgeneric accept-gdb-connection (server port &optional listen-address)
+(defgeneric accept-gdb-connection (server port &optional listen-address trace-exchange)
   (:documentation "Wait for a single connection to `server' on `port'")
-  (:method ((server gdb-server) port &optional (listen-address "127.0.0.1"))
+  (:method ((server gdb-server) port &optional (listen-address "127.0.0.1") (trace-exchange *trace-exchange*))
     (let ((server-socket (socket-listen listen-address port :reuse-address t
-                                      :backlog 1)))
+                                      :backlog 1))
+          (*trace-exchange* trace-exchange))
     (unwind-protect
          (let* ((client (socket-accept server-socket))
                 (stream (socket-stream client)))
