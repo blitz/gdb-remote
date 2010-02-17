@@ -9,6 +9,64 @@
 
 (in-package :blitz.debug.gdb-remote)
 
+
+(defun check-packet-epilogue (stream)
+  (and (char= #\# (read-char stream))
+       (digit-char-p (read-char stream) #x10)))
+
+(defmethod handle-block-write-command ((server gdb-server) (char (eql #\G)) &aux
+                                       (stream (stream-of server))
+                                       (register-set-bytes (slot-value server 'register-set-bytes)))
+  (let ((iovec (make-array (ash register-set-bytes 1) :element-type 'base-char)))
+    (declare (dynamic-extent iovec))
+    (read-sequence iovec stream)
+    (unless (check-packet-epilogue stream)
+      (return-from handle-block-write-command))
+    (gdb-set-target-registers-from-vector server (string-to-octets iovec))
+    (write-response stream "OK")))
+
+(defun read-two-value-pair (stream &aux saw-comma)
+  (loop :for c = (read-char stream)
+     :for i :from 0
+     :until (char= c #\:)
+     :if (char= c #\,)
+       :do (setf saw-comma t)
+     :else    
+       :if saw-comma
+         :collect c :into 2nd-value
+       :else
+         :collect c :into 1st-value
+       :end
+     :end
+     :finally (return (values (parse-integer (coerce 1st-value 'string) :radix #x10)
+                              (parse-integer (coerce 2nd-value 'string) :radix #x10)))))
+
+(defmethod handle-block-write-command ((server gdb-server) (char (eql #\M)) &aux
+                                       (stream (stream-of server)))
+  (multiple-value-bind (addr len) (read-two-value-pair stream)
+    (let ((iovec (make-array (ash len 1) :element-type 'base-char)))
+      (declare (dynamic-extent iovec))
+      (read-sequence iovec stream)
+      (unless (check-packet-epilogue stream)
+        (return-from handle-block-write-command))
+      (gdb-write-memory server addr (string-to-octets iovec))
+      (write-response stream "OK"))))
+
+(defmethod handle-block-write-command ((server gdb-server) (char (eql #\X)) &aux
+                                       (stream (stream-of server)))
+  "Quickly skip X packets."
+  (multiple-value-bind (addr len) (read-two-value-pair stream)
+    (declare (ignore addr))
+    (let ((iovec (make-array len :element-type 'base-char)))
+      (declare (dynamic-extent iovec))
+      ;; read the known minimum amount quickly
+      (read-sequence iovec stream)
+      ;; read the rest...
+      (loop (when (char= #\# (read-char stream))
+              (return)))
+      (read-char stream)
+      (write-response stream ""))))
+
 (define-gdb-command gdb-kill ()
     "Kill program."
     (#\k))

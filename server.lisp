@@ -11,6 +11,7 @@
 
 (defclass* gdb-server ()
   (stream
+   (register-set-bytes :initarg :register-set-bytes)
    (no-ack-mode :initform nil)))
 
 (defclass* gdb-extended-server (gdb-server)
@@ -67,8 +68,17 @@ for a given character)."
   (:method ((server gdb-server))
     (listen (stream-of server))))
 
+(defun block-write-command-p (char)
+  "See if we can efficiently read data for this command."
+  (member char '(#\M #\G #\X)))
+
+(defgeneric handle-block-write-command (server char)
+  (:documentation
+   "And efficient data entry path, not reading a data character at a time,
+and not running a regex matcher on it either."))
+
 (defun protocol-state-update (stream char state our-checksum their-checksum command
-                              packet-fn no-ack-mode &optional verbose)
+                              packet-fn block-write-fn no-ack-mode &optional verbose)
   (flet ((done (state &key 
                       (our-checksum our-checksum) (their-checksum their-checksum) 
                       (command command))
@@ -83,17 +93,28 @@ for a given character)."
           ;(format *trace-output* "~&Junk character ~C. Ignoring.~%" char)
           (done :start))
          (t
-          (done :in-msg 
+          (done :in-msg1
                 :command (empty-adjustable-vector)
                 :our-checksum 0))))
-      (:in-msg
-       (if (char= char #\#)
-           (done :check1)
-           (done :in-msg
-                 :command (progn 
-                            (vector-push-extend char command)
-                            command)
-                 :our-checksum (update-checksum char our-checksum))))
+      (:in-msg1
+       (cond ((and no-ack-mode (block-write-command-p char))
+              (funcall block-write-fn char)
+              (done :start))
+             (t
+              (done :in-msg2
+                    :command (progn 
+                               (vector-push-extend char command)
+                               command)
+                    :our-checksum (update-checksum char our-checksum)))))
+      (:in-msg2
+       (cond ((char= char #\#)
+              (done :check1))
+             (t
+              (done :in-msg2
+                    :command (progn 
+                               (vector-push-extend char command)
+                               command)
+                    :our-checksum (update-checksum char our-checksum)))))
       (:check1
        (if no-ack-mode
            ;; ACKs are not required
@@ -161,6 +182,8 @@ for a given character)."
                                                  (handle-raw-command server command)
                                                  nil))
                                        (return-from handle-protocol)))
+                                   (lambda (char)
+                                     (handle-block-write-command server char))
                                    (no-ack-mode-of server)
                                    ;; verbose
                                    t)))))
@@ -176,6 +199,12 @@ for a given character)."
 (defcondition* gdb-protocol-error (error)
   (message 
    errno))
+
+(defun write-response (stream response &optional (checksum (update-checksum response)))
+  (write-char #\$ stream)
+  (write-sequence response stream)
+  (format stream "#~2,'0X" checksum)
+  (force-output stream))
 
 (defgeneric handle-raw-command (server command)
   (:documentation "Receives a raw command string as argument, parses
@@ -193,15 +222,10 @@ for a given character)."
                 (> (length result) *trace-exchange*))
         (force-output *trace-output*))
       (loop
-         (format (stream-of server) "$~A#~2,'0X"
-                 result checksum)
-         (force-output (stream-of server))
+         (write-response (stream-of server) result checksum)
          (when (or (no-ack-mode-of server)
-                   (char= (read-char (stream-of server))
-                          #\+))
+                   (char= #\+ (read-char (stream-of server))))
            (return-from handle-raw-command))))))
-
-
 
 (defmacro define-gdb-command (method-name method-args doc (command-char &optional (regex "") (vars method-args)
                                                                         &key (default-method-p t))
