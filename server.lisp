@@ -30,12 +30,16 @@
     (unwind-protect
          (let* ((client (socket-accept server-socket))
                 (stream (socket-stream client)))
-           (unwind-protect 
-                (progn
-                  (setf (stream-of server) stream)
-                  (format *trace-output* "Connection with ~A established.~%" (get-peer-address client))
-                  (handle-protocol server))
-             (close stream)))
+           (handler-case (unwind-protect 
+                              (progn
+                                (setf (stream-of server) stream)
+                                (format *trace-output* "Connection with ~A established.~%" (get-peer-address client))
+                                (handle-protocol server))
+                           (close stream))
+             ;; XXX: SBCL-ism
+             (sb-int:simple-stream-error (c)
+               ;; Deal with -EPIPE
+               (format *error-output* "~@<; ~@;ERROR: ~A~:@>~%" c))))
          (socket-close server-socket)))))
 
 (defun empty-adjustable-vector ()
