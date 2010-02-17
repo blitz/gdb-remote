@@ -179,7 +179,7 @@ and not running a regex matcher on it either."))
                                                (> (length command) *trace-exchange*))
                                        (force-output *trace-output*))
                                      (when (eq 'gdb-detach 
-                                               (catch 'gdb-detach 
+                                               (catch 'gdb-detach
                                                  (handle-raw-command server command)
                                                  nil))
                                        (return-from handle-protocol)))
