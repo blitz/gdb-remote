@@ -18,7 +18,8 @@
                                        (stream (stream-of server))
                                        (register-set-bytes (slot-value server 'register-set-bytes)))
   (let ((iovec (make-array (ash register-set-bytes 1) :element-type 'base-char)))
-    (declare (dynamic-extent iovec))
+    (when *trace-exchange*
+      (log-request "G: writing registers"))
     (read-sequence iovec stream)
     (unless (check-packet-epilogue stream)
       (return-from handle-block-write-command))
@@ -44,8 +45,9 @@
 (defmethod handle-block-write-command ((server gdb-server) (char (eql #\M)) &aux
                                        (stream (stream-of server)))
   (multiple-value-bind (addr len) (read-two-value-pair stream)
+    (when *trace-exchange*
+      (log-request "M: writing memory at ~8,'0X, 0x~X bytes" addr len))
     (let ((iovec (make-array (ash len 1) :element-type 'base-char)))
-      (declare (dynamic-extent iovec))
       (read-sequence iovec stream)
       (unless (check-packet-epilogue stream)
         (return-from handle-block-write-command))
@@ -56,9 +58,9 @@
                                        (stream (stream-of server)))
   "Quickly skip X packets."
   (multiple-value-bind (addr len) (read-two-value-pair stream)
-    (declare (ignore addr))
+    (when *trace-exchange*
+      (log-request "X: not writing memory at ~8,'0X, 0x~X bytes, unsupported" addr len))
     (let ((iovec (make-array len :element-type 'base-char)))
-      (declare (dynamic-extent iovec))
       ;; read the known minimum amount quickly
       (read-sequence iovec stream)
       ;; read the rest...

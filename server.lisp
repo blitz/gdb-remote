@@ -20,6 +20,12 @@ as the number of bytes, per packet, to print, for packets in either direction. "
   "Maps first characters of incoming packets to reactions -- two-argument functions,
 which are passed the server and the command, as a string.")
 
+(defvar *log-stream* *trace-output*)
+
+(defun log-request (control-string &rest args)
+  (apply #'format *log-stream* (concatenate 'string "~&GDB> " control-string "~%") args)
+  (force-output *log-stream*))
+
 ;;;
 ;;; Classes
 ;;;
@@ -201,10 +207,9 @@ and not running a regex matcher on it either."))
                                      ;; Close connection when someone
                                      ;; throws gdb-detach.
                                      (when *trace-exchange*
-                                       (format *trace-output* "~&GDB> ~A~:[~;...continued~]~%"
-                                               (subseq command 0 (min *trace-exchange* (length command)))
-                                               (> (length command) *trace-exchange*))
-                                       (force-output *trace-output*))
+                                       (log-request "~A~:[~;...continued~]"
+                                                    (subseq command 0 (min *trace-exchange* (length command)))
+                                                    (> (length command) *trace-exchange*)))
                                      (when (eq 'gdb-detach 
                                                (catch 'gdb-detach
                                                  (handle-raw-command server command)
