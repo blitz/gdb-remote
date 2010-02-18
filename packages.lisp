@@ -51,6 +51,7 @@
            "GDB-DESCRIBE-TARGET-SPU"
            "GDB-XFERRABLE-READ"
            "GDB-XFERRABLE-WRITE"
+           "GDB-EXTENDED-COMMAND"
            ;; Utilities
            "TO-HEX-STRING"
            "FROM-HEX-STRING"

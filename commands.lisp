@@ -129,4 +129,16 @@ killing."
                          (parse-hex-integer address)
                          (parse-hex-integer length)))
 
+(defgeneric gdb-extended-command (server command arguments)
+  (:method ((o gdb-server) command arguments)
+    ""))
+
+(define-gdb-command gdb-extended (command)
+    "Extended command."
+    (#\v "(.*)")
+  (let ((sep-posn (position-if (rcurry #'member '(#\? #\: #\;)) command)))
+    (gdb-extended-command server (make-keyword (string-upcase (subseq command 0 sep-posn)))
+                          (when (and sep-posn (/= (1+ sep-posn) (length command)))
+                            (subseq command (1+ sep-posn))))))
+
 ;;; EOF
