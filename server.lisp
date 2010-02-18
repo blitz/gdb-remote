@@ -47,22 +47,25 @@ which are passed the server and the command, as a string.")
   (:documentation "Wait for a single connection to `server' on `port'")
   (:method ((server gdb-server) port &optional (listen-address "127.0.0.1") (trace-exchange *trace-exchange*))
     (let ((server-socket (socket-listen listen-address port :reuse-address t
-                                      :backlog 1))
-          (*trace-exchange* trace-exchange))
-    (unwind-protect
-         (let* ((client (socket-accept server-socket))
-                (stream (socket-stream client)))
-           (handler-case (unwind-protect 
-                              (progn
-                                (setf (stream-of server) stream)
-                                (format *trace-output* "Connection with ~A established.~%" (get-peer-address client))
-                                (handle-protocol server))
-                           (close stream))
-             ;; XXX: SBCL-ism
-             (sb-int:simple-stream-error (c)
-               ;; Deal with -EPIPE
-               (format *error-output* "~@<; ~@;ERROR: ~A~:@>~%" c))))
-         (socket-close server-socket)))))
+                                        :backlog 1))
+          (*trace-exchange* trace-exchange)
+          peer-address)
+      (unwind-protect
+           (let* ((client (socket-accept server-socket))
+                  (stream (socket-stream client)))
+             (setf peer-address (get-peer-address client))
+             (handler-case (unwind-protect 
+                                (progn
+                                  (setf (stream-of server) stream)
+                                  (format *trace-output* "~@<; ~@;Connection with ~A established.~:@>~%" peer-address)
+                                  (handle-protocol server))
+                             (close stream))
+               ;; XXX: SBCL-ism
+               (sb-int:simple-stream-error (c)
+                 ;; Deal with -EPIPE
+                 (format *error-output* "~@<; ~@;ERROR: ~A~:@>~%" c))))
+        (socket-close server-socket)
+        (format *trace-output* "~@<; ~@;Severed connection with ~A.~:@>~%" peer-address)))))
 
 (defun empty-adjustable-vector ()
   (make-array 0 
