@@ -9,6 +9,20 @@
 
 (in-package :blitz.debug.gdb-remote)
 
+;;;
+;;; Globals
+;;;
+(defvar *trace-exchange* nil
+  "Either NIL, which means no tracing, or a positive integer, which is interpreted
+as the number of bytes, per packet, to print, for packets in either direction. ")
+
+(defvar *command-hash* (make-hash-table)
+  "Maps first characters of incoming packets to reactions -- two-argument functions,
+which are passed the server and the command, as a string.")
+
+;;;
+;;; Classes
+;;;
 (defclass* gdb-server ()
   (stream
    (register-set-bytes :initarg :register-set-bytes)
@@ -17,6 +31,14 @@
 (defclass* gdb-extended-server (gdb-server)
   ())
 
+;;;
+;;; Conditions
+;;;
+(defcondition* gdb-protocol-error (error)
+  (message 
+   errno))
+
+;;;
 (defgeneric extended-mode-reaction (server)
   (:method ((o gdb-server)) "")
   (:method ((o gdb-extended-server)) "OK"))
@@ -152,8 +174,6 @@ and not running a regex matcher on it either."))
                   (format *trace-output* "~&Received bad command: ~S" command))))
              (done :start)))))))
 
-(defvar *trace-exchange* nil)
-
 (defgeneric handle-protocol (server)
   (:documentation "Handles the low-level details of the protocol and
   maps request from the GDB client to method calls on the server
@@ -193,17 +213,11 @@ and not running a regex matcher on it either."))
                                    ;; verbose
                                    t)))))
 
-(defvar *command-hash* (make-hash-table))
-
 (defgeneric lookup-handler (server command)
   (:method ((server gdb-server) command)
     (if (zerop (length command))
         nil
         (values (gethash (char command 0) *command-hash*)))))
-
-(defcondition* gdb-protocol-error (error)
-  (message 
-   errno))
 
 (defun write-response (stream response &optional (checksum (update-checksum response)))
   (write-char #\$ stream)

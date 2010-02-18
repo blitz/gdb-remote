@@ -13,26 +13,29 @@
   ())
 
 (defgeneric register-set-from-vector (target vector)
-  (:documentation "Parse a byte vector into a register set
-  structure."))
+  (:documentation
+   "Parse a byte vector into a register set structure."))
 
 (defgeneric register-set-to-vector (target register-set)
-  (:documentation "Transform a register-set into a byte vector."))
+  (:documentation
+   "Transform a register-set into a byte vector."))
 
 (defgeneric gdb-read-target-register (target register-nr))
 (defgeneric gdb-write-target-register (target register-nr value))
 
 (defgeneric gdb-target-registers-as-vector (target)
-  (:documentation "Return values of TARGET's registers as byte vector,
-in format and order expected by GDB.")
+  (:documentation
+   "Return values of TARGET's registers as an outgoing byte vector, 
+in order and format expected by GDB.")
   (:method ((o target))
     "Supposed to be a fallback method in the absence of a more 
 efficient pass-through."
     (register-set-to-vector o (gdb-read-registers o))))
 
 (defgeneric gdb-set-target-registers-from-vector (target vector)
-  (:documentation "Write TARGET's registers from byte VECTOR,
-in format and order expected from GDB.")
+  (:documentation
+   "Write TARGET's registers from an incoming byte VECTOR, in order and
+format expected from GDB.")
   (:method ((o target) vector)
     "Supposed to be a fallback method in the absence of a more
 efficient pass-through."
