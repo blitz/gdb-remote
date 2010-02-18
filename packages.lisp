@@ -58,6 +58,8 @@
            ;; Constants
            "+REASON-TRAP+"
            "+REASON-INTERRUPT+"
+           ;; Global knobs
+           "*TRACE-EXCHANGE*"
            ;; Client (this is a very bare interface)
            "DO-GDB-CONNECTION"
            "SEND-RAW-COMMAND"

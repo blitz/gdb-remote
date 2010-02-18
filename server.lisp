@@ -126,6 +126,7 @@ for a given character)."
                   (format *trace-output* "~&Received bad command: ~S" command))))
              (done :start)))))))
 
+(defvar *trace-exchange* nil)
 
 (defgeneric handle-protocol (server)
   (:documentation "Handles the low-level details of the protocol and
@@ -150,6 +151,11 @@ for a given character)."
                                    (lambda (command)
                                      ;; Close connection when someone
                                      ;; throws gdb-detach.
+                                     (when *trace-exchange*
+                                       (format *trace-output* "~&GDB> ~A~:[~;...continued~]~%"
+                                               (subseq command 0 (min *trace-exchange* (length command)))
+                                               (> (length command) *trace-exchange*))
+                                       (force-output *trace-output*))
                                      (when (eq 'gdb-detach 
                                                (catch 'gdb-detach 
                                                  (handle-raw-command server command)
@@ -181,7 +187,11 @@ for a given character)."
                          (funcall handler server command)
                          "")))
            (checksum (update-checksum result)))
-      #+ ignore (format *trace-output* ">> ~A~%" result)
+      (when *trace-exchange*
+        (format *trace-output* "<reply ~A~:[~;...continued~]~%"
+                (subseq result 0 (min *trace-exchange* (length result)))
+                (> (length result) *trace-exchange*))
+        (force-output *trace-output*))
       (loop
          (format (stream-of server) "$~A#~2,'0X"
                  result checksum)
