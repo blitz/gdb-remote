@@ -19,4 +19,21 @@
 (defgeneric register-set-to-vector (target register-set)
   (:documentation "Transform a register-set into a byte vector."))
 
+(defgeneric gdb-target-registers-as-vector (target)
+  (:documentation "Return values of TARGET's registers as byte vector,
+in format and order expected by GDB.")
+  (:method ((o target))
+    "Supposed to be a fallback method in the absence of a more 
+efficient pass-through."
+    (register-set-to-vector o (gdb-read-registers o))))
+
+(defgeneric gdb-set-target-registers-from-vector (target vector)
+  (:documentation "Write TARGET's registers from byte VECTOR,
+in format and order expected from GDB.")
+  (:method ((o target) vector)
+    "Supposed to be a fallback method in the absence of a more
+efficient pass-through."
+    (gdb-write-registers
+     o (register-set-from-vector o vector))))
+
 ;;; EOF

@@ -29,15 +29,12 @@ killing."
 (define-gdb-command gdb-read-registers ()
     "Read registers"
     (#\g)
-  (to-hex-string
-   (register-set-to-vector server (gdb-read-registers server))))
+  (to-hex-string (gdb-target-registers-as-vector server)))
 
 (define-gdb-command gdb-write-registers (register-set)
     "Write registers. Return value is ignored."
     (#\G "(.*)")
-  (gdb-write-registers server (register-set-from-vector 
-                               server
-                               (from-hex-string register-set)))
+  (gdb-set-target-registers-from-vector server (from-hex-string register-set))
   "OK")
 
 (define-gdb-command gdb-set-thread (domain thread)

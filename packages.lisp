@@ -29,6 +29,8 @@
            "GDB-DETACH"
            "GDB-READ-REGISTERS"
            "GDB-WRITE-REGISTERS"
+           "GDB-TARGET-REGISTERS-AS-VECTOR"
+           "GDB-SET-TARGET-REGISTERS-FROM-VECTOR"
            "GDB-SET-THREAD"
            "GDB-READ-MEMORY"
            "GDB-WRITE-MEMORY"
