@@ -29,24 +29,60 @@
   (:method ((server gdb-server) monitor-command)
     ""))
 
-(defmethod gdb-query ((server gdb-server) query-string)
-  (regex-case query-string
-    (("Rcmd,(.*)" monitor-hex-command)
-     (let* ((string (handler-case
-                        (octets-to-string (from-hex-string monitor-hex-command))
-                      (t ()
-                        (return-from gdb-query
-                          (format nil "EDecodingError: Try ASCII")))))
-            (response (gdb-monitor server string)))
-       (to-hex-string (string-to-octets 
-                       (if (stringp response)
-                           response
-                           (format nil "Internal error.~%"))))))
-    (("Supported.*")                    ; XXX we ignore GDB features
-     ;; XXX Use an extra method for this.
-     "QStartNoAckMode+;PacketSize=4000"
-     )
-    (t 
-     "")))
+(defgeneric gdb-describe-target (target))
+(defgeneric gdb-describe-target-memory-map (target))
+(defgeneric gdb-describe-target-spu (target))
+
+(defgeneric gdb-xferrable-read (server xferrable &key &allow-other-keys)
+  (:method ((server gdb-server) (x (eql :features)) &key &allow-other-keys)
+    (gdb-describe-target server))
+  (:method ((server gdb-server) (x (eql :memory-map)) &key &allow-other-keys)
+    (gdb-describe-target-memory-map server))
+  (:method ((server gdb-server) (x (eql :spu)) &key &allow-other-keys)
+    (gdb-describe-target-spu server)))
+
+(defgeneric gdb-xferrable-write (server xferrable vector poffset length &key &allow-other-keys))
+
+(let (xferrable data)
+
+  (defun handle-xferrable (server pxferrable pdirection poffset length &optional annex)
+    (ecase pdirection
+      (:read
+       (unless (eq pxferrable xferrable)
+         (setf xferrable xferrable
+               data (gdb-xferrable-read server pxferrable :annex annex)))
+       (if (= poffset (length data))
+           "l"
+           (concatenate 'string "m" (subseq data poffset (min (length data) (+ poffset length))))))
+      (:write
+       (error "Xfer writes not supported yet."))))
+
+  (defmethod gdb-query ((server gdb-server) query-string)
+    (regex-case query-string
+      (("Rcmd,(.*)" monitor-hex-command)
+       (let* ((string (handler-case
+                          (octets-to-string (from-hex-string monitor-hex-command))
+                        (t ()
+                          (return-from gdb-query
+                            (format nil "EDecodingError: Try ASCII")))))
+              (response (gdb-monitor server string)))
+         (to-hex-string (string-to-octets 
+                         (if (stringp response)
+                             response
+                             (format nil "Internal error.~%"))))))
+      (("Supported.*")            ; XXX we ignore GDB features
+       ;; XXX Use an extra method for this.
+       "QStartNoAckMode+;PacketSize=4000;qXfer:features:read+;qXfer:memory-map:read+;qXfer:spu:read+"
+       )
+      (("Symbol::")
+       "OK")
+      (("Xfer:(.*):(.*):(.*):(.*),(.*)" pxferrable pdirection annex poffset length)
+       (handle-xferrable server (make-keyword (string-upcase pxferrable)) (make-keyword (string-upcase pdirection))
+                         (parse-integer poffset :radix #x10) (parse-integer length :radix #x10) annex))
+      (("Xfer:(.*):(.*):(.*),(.*)"      pxferrable pdirection poffset length)
+       (handle-xferrable server (make-keyword (string-upcase pxferrable)) (make-keyword (string-upcase pdirection))
+                         (parse-integer poffset :radix #x10) (parse-integer length :radix #x10)))
+      (t
+       ""))))
 
 ;;; EOF

@@ -12,8 +12,8 @@
 (in-package :blitz.debug.gdb-remote.system)
 
 (defsystem :gdb-remote
-  :depends-on (:defclass-star :usocket :cl-ppcre :cl-utilities
-                              :binary-types)
+  :depends-on (:alexandria :defclass-star :usocket :cl-ppcre :cl-utilities
+                           :binary-types)
   :serial t
   :components ((:file "packages")
                (:file "utility-macros")

@@ -9,9 +9,9 @@
 
 (defpackage :blitz.debug.gdb-remote
   (:nicknames :gdbremote)
-  (:use :common-lisp :defclass-star :usocket
+  (:use :common-lisp :alexandria :defclass-star :usocket
         :binary-types)
-  (:import-from "CL-UTILITIES" "WITH-UNIQUE-NAMES")
+  (:shadowing-import-from "CL-UTILITIES" "WITH-UNIQUE-NAMES")
   (:import-from "CL-PPCRE" "SCAN-TO-STRINGS")
   (:export "GDB-PROTOCOL-ERROR"
            ;; GDB Server
@@ -39,6 +39,11 @@
            "GDB-INSERT-BREAKPOINT"
            "GDB-REMOVE-BREAKPOINT"
            "GDB-MONITOR"
+           "GDB-DESCRIBE-TARGET"
+           "GDB-DESCRIBE-TARGET-MEMORY-MAP"
+           "GDB-DESCRIBE-TARGET-SPU"
+           "GDB-XFERRABLE-READ"
+           "GDB-XFERRABLE-WRITE"
            ;; Utilities
            "TO-HEX-STRING"
            "FROM-HEX-STRING"
