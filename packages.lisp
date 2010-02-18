@@ -52,6 +52,7 @@
            "GDB-XFERRABLE-READ"
            "GDB-XFERRABLE-WRITE"
            "GDB-EXTENDED-COMMAND"
+           "GDB-HANDLE-QUERY"
            ;; Utilities
            "TO-HEX-STRING"
            "FROM-HEX-STRING"

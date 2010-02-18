@@ -33,6 +33,7 @@
 (defgeneric gdb-describe-target-memory-map (target))
 (defgeneric gdb-describe-target-spu (target))
 
+(defgeneric gdb-xferrable-write (server xferrable vector poffset length &key &allow-other-keys))
 (defgeneric gdb-xferrable-read (server xferrable &key &allow-other-keys)
   (:method ((server gdb-server) (x (eql :features)) &key &allow-other-keys)
     (gdb-describe-target server))
@@ -41,7 +42,10 @@
   (:method ((server gdb-server) (x (eql :spu)) &key &allow-other-keys)
     (gdb-describe-target-spu server)))
 
-(defgeneric gdb-xferrable-write (server xferrable vector poffset length &key &allow-other-keys))
+(defgeneric gdb-handle-query (server query arguments)
+  (:method ((o gdb-server) query args) "")
+  (:method ((o gdb-server) (q (eql :supported)) args)
+    "QStartNoAckMode+;PacketSize=4000"))
 
 (let (xferrable data)
 
@@ -70,7 +74,7 @@
                                                                 :remove-empty-subseqs t)
                                (cons (make-keyword (string-upcase (first cmd)))
                                      (subseq decoded-string rest))))
-                         (t (c)
+                         (t ()
                            (return-from gdb-query
                              (format nil "EDecodingError: Try ASCII")))))
               (response (gdb-monitor server (car command) (cdr command))))
@@ -78,12 +82,6 @@
            (string (to-hex-string (string-to-octets (concatenate 'string response #(#\Newline)))))
            (null (to-hex-string (string-to-octets (format nil "Internal error.~%"))))
            (t "OK"))))
-      (("Supported.*")            ; XXX we ignore GDB features
-       ;; XXX Use an extra method for this.
-       "QStartNoAckMode+;PacketSize=4000;qXfer:features:read+;qXfer:memory-map:read+;qXfer:spu:read+"
-       )
-      (("Symbol::")
-       "OK")
       (("Xfer:(.*):(.*):(.*):(.*),(.*)" pxferrable pdirection annex poffset length)
        (handle-xferrable server (make-keyword (string-upcase pxferrable)) (make-keyword (string-upcase pdirection))
                          (parse-integer poffset :radix #x10) (parse-integer length :radix #x10) annex))
@@ -91,6 +89,9 @@
        (handle-xferrable server (make-keyword (string-upcase pxferrable)) (make-keyword (string-upcase pdirection))
                          (parse-integer poffset :radix #x10) (parse-integer length :radix #x10)))
       (t
-       ""))))
+       (let ((sep-posn (position-if (rcurry #'member '(#\, #\: #\; #\?)) query-string)))
+         (gdb-handle-query server (make-keyword (string-upcase (subseq query-string 0 sep-posn)))
+                           (when (and sep-posn (/= (1+ sep-posn) (length query-string)))
+                             (subseq query-string (1+ sep-posn)))))))))
 
 ;;; EOF
