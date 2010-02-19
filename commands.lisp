@@ -23,7 +23,7 @@
     (read-sequence iovec stream)
     (unless (check-packet-epilogue stream)
       (return-from handle-block-write-command))
-    (gdb-set-target-registers-from-vector server (string-to-octets iovec))
+    (gdb-set-target-registers-from-vector server (from-hex-string iovec))
     (write-response stream "OK")))
 
 (defun read-two-value-pair (stream &aux saw-comma)
@@ -51,7 +51,7 @@
       (read-sequence iovec stream)
       (unless (check-packet-epilogue stream)
         (return-from handle-block-write-command))
-      (gdb-write-memory server addr (string-to-octets iovec))
+      (gdb-write-memory server addr (from-hex-string iovec))
       (write-response stream "OK"))))
 
 (defmethod handle-block-write-command ((server gdb-server) (char (eql #\X)) &aux
@@ -66,7 +66,7 @@
       ;; read the rest...
       (loop (when (char= #\# (read-char stream))
               (return)))
-      (read-char stream)
+      (read-char stream) ; slurp the checksum
       (write-response stream ""))))
 
 (define-gdb-command gdb-kill ()
