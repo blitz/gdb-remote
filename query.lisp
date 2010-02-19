@@ -77,11 +77,12 @@
                          (t ()
                            (return-from gdb-query
                              (format nil "EDecodingError: Try ASCII")))))
-              (response (gdb-monitor server (car command) (cdr command))))
-         (typecase response
-           (string (to-hex-string (string-to-octets (concatenate 'string response #(#\Newline)))))
-           (null (to-hex-string (string-to-octets (format nil "Internal error.~%"))))
-           (t "OK"))))
+              (response-values (or (multiple-value-list (gdb-monitor server (car command) (cdr command)))
+                                   '("; No values"))))
+         (to-hex-string (string-to-octets (apply #'concatenate 'string
+                                                 (loop :for (r . rest) :on response-values
+                                                    :collect r
+                                                    :collect #(#\Newline)))))))
       (("Xfer:(.*):(.*):(.*):(.*),(.*)" pxferrable pdirection annex poffset length)
        (handle-xferrable server (make-keyword (string-upcase pxferrable)) (make-keyword (string-upcase pdirection))
                          (parse-integer poffset :radix #x10) (parse-integer length :radix #x10) annex))
